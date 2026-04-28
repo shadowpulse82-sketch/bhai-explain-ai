@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { sanitizeMath } from "@/lib/sanitizeMath";
 
 /**
  * Tiny markdown renderer for the assistant's reply.
@@ -185,7 +186,8 @@ export function Markdown({
   color?: string;
 }) {
   const colors = useColors();
-  const tokens = useMemo(() => tokenize(source), [source]);
+  const cleaned = useMemo(() => sanitizeMath(source), [source]);
+  const tokens = useMemo(() => tokenize(cleaned), [cleaned]);
   const textColor = color ?? colors.foreground;
 
   return (
