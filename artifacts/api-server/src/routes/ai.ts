@@ -29,9 +29,11 @@ Rules:
 function languageInstruction(language: string | undefined): string {
   switch (language) {
     case "hinglish":
-      return "Respond in Hinglish — natural mix of Hindi and English (Roman script, e.g. 'yaar', 'samjha?', 'theek hai'). Keep technical terms in English.";
-    case "hindi":
-      return "Respond entirely in Hindi (Devanagari script). Keep technical/scientific terms in English where they're more commonly known.";
+      return "Respond in Hinglish — natural mix of Hindi and English written in Roman script. Use friendly Indian-student phrases like 'bhai', 'yaar', 'samjha?', 'theek hai', 'chal', 'dekh'. Keep technical/math terms in English.";
+    case "telugu":
+      return "Respond entirely in Telugu (Telugu script — తెలుగు). Sound like a warm older brother explaining to a younger sibling. Keep technical/math/science terms in English where those terms are more commonly used (e.g. 'quadratic equation', 'photosynthesis').";
+    case "telugu_roman":
+      return "Respond in casual Telugu written using English letters (Roman script — like 'cheppu thammudu', 'ardham aindha?', 'easy ga chestha', 'ikkada formula use cheyyali'). Make it feel exactly like two friends talking — warm, simple, conversational. Do NOT use Telugu script. Do NOT be formal. Keep technical terms in English.";
     case "english":
     default:
       return "Respond in clear, friendly English. Occasional warm phrases like 'okay champ', 'here's the deal' are fine.";

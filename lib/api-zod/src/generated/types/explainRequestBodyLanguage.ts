@@ -15,5 +15,6 @@ export type ExplainRequestBodyLanguage =
 export const ExplainRequestBodyLanguage = {
   english: "english",
   hinglish: "hinglish",
-  hindi: "hindi",
+  telugu: "telugu",
+  telugu_roman: "telugu_roman",
 } as const;

@@ -36,7 +36,7 @@ export const ExplainQuestionBody = zod.object({
     .optional()
     .describe("Optional grade level (e.g. Grade 5, High School)."),
   language: zod
-    .enum(["english", "hinglish", "hindi"])
+    .enum(["english", "hinglish", "telugu", "telugu_roman"])
     .optional()
     .describe("Preferred response language style."),
   imageBase64: zod

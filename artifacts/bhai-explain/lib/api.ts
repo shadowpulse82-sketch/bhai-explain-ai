@@ -11,9 +11,34 @@ export type ExplainParams = {
   question: string;
   subject?: string;
   gradeLevel?: string;
-  language?: "english" | "hinglish" | "hindi";
+  language?: "english" | "hinglish" | "telugu" | "telugu_roman";
   imageBase64?: string;
 };
+
+function friendlyHttpError(status: number, body: string): string {
+  if (status === 413) {
+    return "That photo is too big to send. Try snapping a smaller picture or zooming in on just the question.";
+  }
+  if (status === 408 || status === 504) {
+    return "Network took too long. Check your connection and try again.";
+  }
+  if (status === 429) {
+    return "Bhai is getting too many questions right now. Take a breath and try again in a sec.";
+  }
+  if (status >= 500) {
+    return "Bhai's brain hiccuped. Try again — it usually works the second time.";
+  }
+  if (status === 400) {
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed?.error) return String(parsed.error);
+    } catch {
+      // ignore
+    }
+    return "That question couldn't be sent. Try rewriting it or removing the photo.";
+  }
+  return "Something didn't work. Try again in a moment.";
+}
 
 function getBaseUrl(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -47,10 +72,7 @@ export async function streamExplain(
     } catch {
       // ignore
     }
-    onEvent({
-      type: "error",
-      error: `Server returned ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`,
-    });
+    onEvent({ type: "error", error: friendlyHttpError(res.status, detail) });
     return;
   }
 
@@ -100,7 +122,14 @@ export async function streamExplain(
     if ((err as { name?: string })?.name === "AbortError") {
       return;
     }
-    const message = err instanceof Error ? err.message : "Stream interrupted.";
-    onEvent({ type: "error", error: message });
+    const raw = err instanceof Error ? err.message : "";
+    const lower = raw.toLowerCase();
+    let friendly = "Connection dropped. Try again in a sec.";
+    if (lower.includes("network") || lower.includes("fetch")) {
+      friendly = "Weak internet detected. Check your connection and try again.";
+    } else if (lower.includes("timeout")) {
+      friendly = "That took too long. Try again with a stronger signal.";
+    }
+    onEvent({ type: "error", error: friendly });
   }
 }

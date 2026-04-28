@@ -23,7 +23,16 @@ const LANGUAGES: { value: Language; label: string; description: string }[] = [
     label: "Hinglish",
     description: "Hindi-English mix in Roman script. Yaar, samjha?",
   },
-  { value: "hindi", label: "Hindi", description: "Devanagari script with English terms." },
+  {
+    value: "telugu",
+    label: "Telugu",
+    description: "తెలుగు script lo full explanation.",
+  },
+  {
+    value: "telugu_roman",
+    label: "Telugu Roman",
+    description: "Cheppu thammudu — Telugu in English letters.",
+  },
 ];
 
 export default function SettingsScreen() {

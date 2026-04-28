@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 
-export type Language = "english" | "hinglish" | "hindi";
+export type Language = "english" | "hinglish" | "telugu" | "telugu_roman";
 
 export type Settings = {
   defaultSubject: string;

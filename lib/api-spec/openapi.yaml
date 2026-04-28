@@ -68,7 +68,7 @@ components:
           description: Optional grade level (e.g. Grade 5, High School).
         language:
           type: string
-          enum: [english, hinglish, hindi]
+          enum: [english, hinglish, telugu, telugu_roman]
           description: Preferred response language style.
         imageBase64:
           type: string

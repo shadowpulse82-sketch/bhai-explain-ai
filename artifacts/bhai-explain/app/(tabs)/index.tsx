@@ -20,10 +20,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AskHeader } from "@/components/AskHeader";
 import { Chip } from "@/components/Chip";
+import { LanguagePillRow } from "@/components/LanguagePicker";
 import { PressableScale } from "@/components/PressableScale";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/contexts/HistoryContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { compressForUpload } from "@/lib/imageCompress";
+import { setPendingRequest } from "@/lib/pendingRequest";
 
 const SUBJECTS = [
   "Math",
@@ -99,28 +102,33 @@ export default function AskScreen() {
         source === "camera"
           ? await ImagePicker.launchCameraAsync({
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              base64: true,
-              quality: 0.6,
+              quality: 1,
               allowsEditing: true,
             })
           : await ImagePicker.launchImageLibraryAsync({
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              base64: true,
-              quality: 0.6,
+              quality: 1,
               allowsEditing: true,
             });
 
       if (result.canceled) return;
       const asset = result.assets?.[0];
-      if (!asset?.base64) {
+      if (!asset?.uri) {
         Alert.alert("Bhai", "Couldn't read that image. Try another one?");
         return;
       }
-      setImageBase64(asset.base64);
-      setImagePreview(asset.uri);
+
+      const compressed = await compressForUpload(asset.uri);
+      setImageBase64(compressed.base64);
+      setImagePreview(compressed.uri);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
-      Alert.alert("Bhai", `Image error: ${msg}`);
+      Alert.alert(
+        "Bhai",
+        msg.toLowerCase().includes("permission")
+          ? msg
+          : "That photo couldn't be processed. Try a smaller one or snap a fresh picture."
+      );
     } finally {
       setPickingImage(false);
     }
@@ -131,15 +139,16 @@ export default function AskScreen() {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
+    setPendingRequest({
+      question: question.trim(),
+      subject: subject || undefined,
+      gradeLevel: grade || undefined,
+      language: settings.language,
+      imageBase64: imageBase64 ?? undefined,
+    });
     router.push({
       pathname: "/answer",
-      params: {
-        question: question.trim(),
-        subject,
-        gradeLevel: grade,
-        language: settings.language,
-        imageBase64: imageBase64 ?? "",
-      },
+      params: { hasImage: imageBase64 ? "1" : "0" },
     });
   };
 
@@ -246,6 +255,10 @@ export default function AskScreen() {
             </PressableScale>
           </View>
         </View>
+
+        <Section title="Bhai's language">
+          <LanguagePillRow />
+        </Section>
 
         <Section title="Subject" >
           <ChipsRow

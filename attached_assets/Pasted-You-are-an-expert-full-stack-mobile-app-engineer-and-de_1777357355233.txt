@@ -1,0 +1,258 @@
+You are an expert full-stack mobile app engineer and debugging specialist.
+
+Fix ALL bugs in my AI homework app called “Bhai’s Take”.
+
+The app currently crashes when users upload images and shows this error:
+
+“413 PayloadTooLargeError: request entity too large”
+
+This happens after uploading homework photos.
+
+---
+
+CRITICAL FIX REQUIRED
+
+Fix the image upload pipeline completely.
+
+The app must:
+
+- support large camera images
+- compress images automatically before upload
+- resize images safely
+- prevent server crashes
+- gracefully handle upload failures
+- show user-friendly error messages
+
+---
+
+REQUIRED IMAGE FIXES
+
+Implement:
+
+1. Automatic Image Compression
+
+Before upload:
+
+- compress image quality
+- resize image to safe dimensions
+- convert huge images to optimized JPEG/webp
+
+Target:
+
+- under 2MB uploads
+
+---
+
+2. Backend Payload Fix
+
+Increase upload size limits safely.
+
+If using Express.js:
+
+- increase body parser limits
+- fix multer/file upload configuration
+- prevent memory crashes
+
+Example:
+
+- limit should support at least 10MB temporarily before compression
+
+---
+
+3. Better Error Handling
+
+Instead of raw HTML/server errors, show friendly messages like:
+
+- “Bhai image bohot badi hai, compress kar raha hu...”
+- “Upload failed, try again”
+- “Weak internet detected”
+
+Never display raw HTML or server stack traces to users.
+
+---
+
+4. Loading State Improvements
+
+After upload:
+Show animated loading text like:
+
+- “Bhai solve kar raha hu…”
+- “Thoda ruk, samjha raha hu…”
+
+Use smooth typing animation.
+
+---
+
+ALSO FIND AND FIX OTHER BUGS
+
+Audit the ENTIRE app and fix:
+
+- upload failures
+- API timeout issues
+- broken UI on mobile
+- dark mode issues
+- slow rendering
+- scroll glitches
+- memory leaks
+- duplicate requests
+- OCR failures
+- empty AI responses
+- image parsing bugs
+- state management bugs
+- crashes on low-end Android devices
+
+Optimize everything for:
+
+- mobile browsers
+- Android devices
+- slow internet users
+
+---
+
+NEW FEATURE REQUIRED
+
+LANGUAGE/TONE SWITCHER
+
+Add a language selector in the UI.
+
+Users should be able to choose explanation style:
+
+1. English
+2. Hinglish
+3. Telugu
+4. Telugu Roman
+
+Use beautiful pill-style buttons or dropdown.
+
+Persist selected language across sessions.
+
+---
+
+LANGUAGE RESPONSE STYLES
+
+1. English
+
+Clear simple English explanation.
+
+Example:
+“Use quadratic formula because the equation is quadratic.”
+
+---
+
+2. Hinglish
+
+Friendly Indian student tone.
+
+Example:
+“Bhai yaha quadratic equation hai isliye formula use karna padega.”
+
+---
+
+3. Telugu
+
+Respond fully in Telugu script.
+
+Example:
+“ఇది క్వాడ్రాటిక్ సమీకరణం కాబట్టి ఫార్ములా ఉపయోగించాలి.”
+
+---
+
+4. Telugu Roman
+
+Respond in Telugu written using English letters.
+
+Style should feel casual and friendly.
+
+Examples:
+
+- “Cheppu thammudu enti problem”
+- “Ikkada formula use cheyyali”
+- “Easy ga ardham ayyela explain chestha”
+
+This should feel EXACTLY like Hinglish but for Telugu-speaking students.
+
+Do NOT make Telugu Roman too formal.
+
+---
+
+AI PROMPT ENGINEERING
+
+Modify the AI system prompts dynamically based on selected language.
+
+Examples:
+
+Hinglish Prompt
+
+“Explain like a friendly Indian senior student in simple Hinglish.”
+
+Telugu Prompt
+
+“Explain like a friendly Telugu senior student using simple Telugu.”
+
+Telugu Roman Prompt
+
+“Explain in casual Telugu written using English letters. Make it feel natural and conversational like friends talking.”
+
+---
+
+UI CHANGES REQUIRED
+
+Add:
+
+- language selector near upload button
+- modern animated toggle
+- icons for each language
+
+Language should update AI responses instantly.
+
+---
+
+PERFORMANCE OPTIMIZATION
+
+Improve:
+
+- image upload speed
+- OCR speed
+- response latency
+- mobile responsiveness
+
+Lazy-load heavy components.
+
+Optimize animations for low-end devices.
+
+---
+
+SECURITY FIXES
+
+Prevent:
+
+- oversized payload attacks
+- invalid image uploads
+- API abuse
+- client-side crashes
+
+Validate file type and size before upload.
+
+---
+
+FINAL OUTPUT REQUIRED
+
+1. Fully fixed upload system
+2. Better error handling
+3. Compressed image pipeline
+4. Language selector system
+5. Telugu Roman AI mode
+6. Improved prompts
+7. Mobile optimization
+8. Production-ready stable app
+
+Do NOT redesign the entire app unnecessarily.
+
+Keep the existing dark modern aesthetic.
+
+Focus on:
+
+- stability
+- speed
+- smooth UX
+- emotional student-friendly experience.

@@ -21,6 +21,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { useColors } from "@/hooks/useColors";
 import { useHistory, newId } from "@/contexts/HistoryContext";
 import { streamExplain } from "@/lib/api";
+import { takePendingRequest, type PendingRequest } from "@/lib/pendingRequest";
 
 type Status = "streaming" | "done" | "error" | "idle";
 
@@ -29,18 +30,19 @@ export default function AnswerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
-    question?: string;
-    subject?: string;
-    gradeLevel?: string;
-    language?: "english" | "hinglish" | "hindi";
-    imageBase64?: string;
     historyId?: string;
+    hasImage?: string;
   }>();
   const { add, getById, toggleBookmark } = useHistory();
   const scrollRef = useRef<ScrollView>(null);
   const startedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const dotAnim = useRef(new Animated.Value(0)).current;
+  const pendingRef = useRef<PendingRequest | null>(null);
+  if (!pendingRef.current && !params.historyId) {
+    pendingRef.current = takePendingRequest();
+  }
+  const pending = pendingRef.current;
 
   const existingItem = params.historyId ? getById(params.historyId) : undefined;
 
@@ -53,10 +55,12 @@ export default function AnswerScreen() {
     existingItem?.id ?? null
   );
 
-  const question = (params.question as string) ?? existingItem?.question ?? "";
-  const subject = (params.subject as string) ?? existingItem?.subject ?? "";
-  const gradeLevel =
-    (params.gradeLevel as string) ?? existingItem?.gradeLevel ?? "";
+  const question = pending?.question ?? existingItem?.question ?? "";
+  const subject = pending?.subject ?? existingItem?.subject ?? "";
+  const gradeLevel = pending?.gradeLevel ?? existingItem?.gradeLevel ?? "";
+  const language = pending?.language ?? "english";
+  const hasImage =
+    !!pending?.imageBase64 || params.hasImage === "1" || !!existingItem?.hasImage;
 
   const item = savedId ? getById(savedId) : undefined;
   const bookmarked = item?.bookmarked ?? existingItem?.bookmarked ?? false;
@@ -93,38 +97,47 @@ export default function AnswerScreen() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    if (!pending) {
+      setStatus("error");
+      setError("Question expired. Head back and ask again.");
+      return;
+    }
+
     let buffer = "";
     streamExplain(
       {
-        question,
-        subject: subject || undefined,
-        gradeLevel: gradeLevel || undefined,
-        language: (params.language as "english" | "hinglish" | "hindi") || "english",
-        imageBase64: (params.imageBase64 as string) || undefined,
+        question: pending.question,
+        subject: pending.subject,
+        gradeLevel: pending.gradeLevel,
+        language: pending.language,
+        imageBase64: pending.imageBase64,
       },
       (e) => {
         if (e.type === "chunk") {
           buffer += e.content;
           setAnswer(buffer);
         } else if (e.type === "done") {
+          if (buffer.trim().length === 0) {
+            setStatus("error");
+            setError("Bhai didn't reply. Try rephrasing or send the question again.");
+            return;
+          }
           setStatus("done");
           if (Platform.OS !== "web") {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
               () => {}
             );
           }
-          if (buffer.trim().length > 0) {
-            const id = newId();
-            add({
-              id,
-              question,
-              subject: subject || undefined,
-              gradeLevel: gradeLevel || undefined,
-              hasImage: !!(params.imageBase64 as string),
-              answer: buffer,
-              createdAt: Date.now(),
-            }).then(() => setSavedId(id));
-          }
+          const id = newId();
+          add({
+            id,
+            question: pending.question,
+            subject: pending.subject,
+            gradeLevel: pending.gradeLevel,
+            hasImage: !!pending.imageBase64,
+            answer: buffer,
+            createdAt: Date.now(),
+          }).then(() => setSavedId(id));
         } else if (e.type === "error") {
           setStatus("error");
           setError(e.error);
@@ -273,7 +286,7 @@ export default function AnswerScreen() {
           >
             {question || "Photo question"}
           </Text>
-          {(params.imageBase64 as string) ? (
+          {hasImage ? (
             <View style={[styles.attached, { borderColor: "rgba(255,255,255,0.3)" }]}>
               <Feather
                 name="image"
@@ -295,18 +308,7 @@ export default function AnswerScreen() {
 
         {/* Streaming dots before content arrives */}
         {status === "streaming" && answer.length === 0 ? (
-          <View style={styles.thinkingRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text
-              style={{
-                fontFamily: "Inter_500Medium",
-                fontSize: 14,
-                color: colors.mutedForeground,
-              }}
-            >
-              Bhai is thinking…
-            </Text>
-          </View>
+          <ThinkingIndicator language={language} />
         ) : null}
 
         {/* Error state */}
@@ -412,6 +414,88 @@ export default function AnswerScreen() {
           </View>
         ) : null}
       </ScrollView>
+    </View>
+  );
+}
+
+const LOADING_MESSAGES: Record<
+  "english" | "hinglish" | "telugu" | "telugu_roman",
+  string[]
+> = {
+  english: [
+    "Bhai is reading your question…",
+    "Working through the steps…",
+    "Almost there — putting it in plain words…",
+    "Double-checking the answer…",
+  ],
+  hinglish: [
+    "Bhai solve kar raha hu…",
+    "Thoda ruk, samjha raha hu…",
+    "Steps likh raha hu, bas ek second…",
+    "Final answer check kar raha hu…",
+  ],
+  telugu: [
+    "Bhaiyya ఆలోచిస్తున్నాడు…",
+    "Steps రాస్తున్నా, కాస్త ఆగు…",
+    "సింపుల్ గా చెప్పేస్తా…",
+    "Final answer check చేస్తున్నా…",
+  ],
+  telugu_roman: [
+    "Aagu thammudu, chestha…",
+    "Steps rastunna, kaasta time…",
+    "Easy ga ardham ayyela cheppestha…",
+    "Final answer check chestunna…",
+  ],
+};
+
+function ThinkingIndicator({
+  language,
+}: {
+  language: "english" | "hinglish" | "telugu" | "telugu_roman";
+}) {
+  const colors = useColors();
+  const messages = LOADING_MESSAGES[language] ?? LOADING_MESSAGES.english;
+  const [index, setIndex] = useState(0);
+  const fade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(fade, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 320,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % messages.length);
+      }, 220);
+    }, 1900);
+    return () => clearInterval(interval);
+  }, [fade, messages.length]);
+
+  return (
+    <View style={styles.thinkingRow}>
+      <ActivityIndicator color={colors.primary} />
+      <Animated.Text
+        style={{
+          fontFamily: "Inter_500Medium",
+          fontSize: 14,
+          color: colors.mutedForeground,
+          opacity: fade,
+          flex: 1,
+        }}
+        numberOfLines={1}
+      >
+        {messages[index]}
+      </Animated.Text>
     </View>
   );
 }
