@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: ai
+    description: AI explanation operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /ai/explain:
+    post:
+      operationId: explainQuestion
+      tags: [ai]
+      summary: Stream a friendly homework explanation
+      description: |
+        Accepts a question (optionally with a photo and grade/subject context)
+        and returns a Server-Sent Events stream of explanation chunks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplainRequestBody"
+      responses:
+        "200":
+          description: SSE stream of explanation chunks
+          content:
+            text/event-stream: {}
 components:
   schemas:
     HealthStatus:
@@ -33,4 +54,24 @@ components:
           type: string
       required:
         - status
-
+    ExplainRequestBody:
+      type: object
+      properties:
+        question:
+          type: string
+          description: The homework question text. Can be empty if an image is provided.
+        subject:
+          type: string
+          description: Optional subject (e.g. Math, Science, History).
+        gradeLevel:
+          type: string
+          description: Optional grade level (e.g. Grade 5, High School).
+        language:
+          type: string
+          enum: [english, hinglish, hindi]
+          description: Preferred response language style.
+        imageBase64:
+          type: string
+          description: Optional base64-encoded JPEG/PNG of the homework problem.
+      required:
+        - question

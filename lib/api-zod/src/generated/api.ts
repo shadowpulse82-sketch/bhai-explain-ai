@@ -14,3 +14,33 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Accepts a question (optionally with a photo and grade/subject context)
+and returns a Server-Sent Events stream of explanation chunks.
+
+ * @summary Stream a friendly homework explanation
+ */
+export const ExplainQuestionBody = zod.object({
+  question: zod
+    .string()
+    .describe(
+      "The homework question text. Can be empty if an image is provided.",
+    ),
+  subject: zod
+    .string()
+    .optional()
+    .describe("Optional subject (e.g. Math, Science, History)."),
+  gradeLevel: zod
+    .string()
+    .optional()
+    .describe("Optional grade level (e.g. Grade 5, High School)."),
+  language: zod
+    .enum(["english", "hinglish", "hindi"])
+    .optional()
+    .describe("Preferred response language style."),
+  imageBase64: zod
+    .string()
+    .optional()
+    .describe("Optional base64-encoded JPEG\/PNG of the homework problem."),
+});

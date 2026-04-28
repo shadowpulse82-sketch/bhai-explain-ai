@@ -5,21 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-/**
- * Preferred response language style.
- */
-export type ExplainRequestBodyLanguage =
-  (typeof ExplainRequestBodyLanguage)[keyof typeof ExplainRequestBodyLanguage];
-
-export const ExplainRequestBodyLanguage = {
-  english: "english",
-  hinglish: "hinglish",
-  hindi: "hindi",
-} as const;
+import type { ExplainRequestBodyLanguage } from "./explainRequestBodyLanguage";
 
 export interface ExplainRequestBody {
   /** The homework question text. Can be empty if an image is provided. */

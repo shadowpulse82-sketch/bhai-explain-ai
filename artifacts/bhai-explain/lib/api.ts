@@ -1,0 +1,106 @@
+/**
+ * Lightweight client for the streaming /api/ai/explain endpoint.
+ *
+ * Expo bundles run outside the web proxy so we hit the absolute domain
+ * exposed via EXPO_PUBLIC_DOMAIN (or fall back to a relative URL on web).
+ */
+
+import "@stardazed/streams-text-encoding";
+
+export type ExplainParams = {
+  question: string;
+  subject?: string;
+  gradeLevel?: string;
+  language?: "english" | "hinglish" | "hindi";
+  imageBase64?: string;
+};
+
+function getBaseUrl(): string {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain && domain.length > 0) {
+    return `https://${domain}`;
+  }
+  return "";
+}
+
+export type ExplainEvent =
+  | { type: "chunk"; content: string }
+  | { type: "done" }
+  | { type: "error"; error: string };
+
+export async function streamExplain(
+  params: ExplainParams,
+  onEvent: (e: ExplainEvent) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${getBaseUrl()}/api/ai/explain`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+    signal,
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      // ignore
+    }
+    onEvent({
+      type: "error",
+      error: `Server returned ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`,
+    });
+    return;
+  }
+
+  if (!res.body) {
+    onEvent({ type: "error", error: "No response body from server." });
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+
+      for (const evt of events) {
+        const line = evt.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        const payload = line.slice(6).trim();
+        if (!payload) continue;
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.error) {
+            onEvent({ type: "error", error: String(parsed.error) });
+            return;
+          }
+          if (parsed.done) {
+            onEvent({ type: "done" });
+            return;
+          }
+          if (typeof parsed.content === "string") {
+            onEvent({ type: "chunk", content: parsed.content });
+          }
+        } catch {
+          // ignore malformed event
+        }
+      }
+    }
+    onEvent({ type: "done" });
+  } catch (err) {
+    if ((err as { name?: string })?.name === "AbortError") {
+      return;
+    }
+    const message = err instanceof Error ? err.message : "Stream interrupted.";
+    onEvent({ type: "error", error: message });
+  }
+}

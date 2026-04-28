@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Bhai Explain"
+version = "1.0.0"
+id = "artifacts/bhai-explain"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 21780
+
+[services.development]
+run = "pnpm --filter @workspace/bhai-explain run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bhai-explain", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/bhai-explain", "run", "serve" ]
+
+[services.env]
+PORT = "21780"
+BASE_PATH = "/"
