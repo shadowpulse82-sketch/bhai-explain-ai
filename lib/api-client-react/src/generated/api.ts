@@ -16,7 +16,12 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { ExplainRequestBody, HealthStatus } from "./api.schemas";
+import type {
+  ExplainRequestBody,
+  HealthStatus,
+  TranscribeRequestBody,
+  TranscribeResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType, BodyType } from "../custom-fetch";
@@ -104,8 +109,9 @@ export function useHealthCheck<
 }
 
 /**
- * Accepts a question (optionally with a photo and grade/subject context)
-and returns a Server-Sent Events stream of explanation chunks.
+ * Accepts a single question (optionally with a photo and grade/subject context)
+OR a conversation history of prior turns, and returns a Server-Sent Events
+stream of explanation chunks.
 
  * @summary Stream a friendly homework explanation
  */
@@ -190,4 +196,91 @@ export const useExplainQuestion = <
   TContext
 > => {
   return useMutation(getExplainQuestionMutationOptions(options));
+};
+
+/**
+ * Converts a base64-encoded audio recording into transcribed text using speech-to-text.
+ * @summary Transcribe a short voice recording into text
+ */
+export const getTranscribeAudioUrl = () => {
+  return `/api/ai/transcribe`;
+};
+
+export const transcribeAudio = async (
+  transcribeRequestBody: TranscribeRequestBody,
+  options?: RequestInit,
+): Promise<TranscribeResponse> => {
+  return customFetch<TranscribeResponse>(getTranscribeAudioUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(transcribeRequestBody),
+  });
+};
+
+export const getTranscribeAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transcribeAudio>>,
+    TError,
+    { data: BodyType<TranscribeRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof transcribeAudio>>,
+  TError,
+  { data: BodyType<TranscribeRequestBody> },
+  TContext
+> => {
+  const mutationKey = ["transcribeAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof transcribeAudio>>,
+    { data: BodyType<TranscribeRequestBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return transcribeAudio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TranscribeAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof transcribeAudio>>
+>;
+export type TranscribeAudioMutationBody = BodyType<TranscribeRequestBody>;
+export type TranscribeAudioMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Transcribe a short voice recording into text
+ */
+export const useTranscribeAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transcribeAudio>>,
+    TError,
+    { data: BodyType<TranscribeRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof transcribeAudio>>,
+  TError,
+  { data: BodyType<TranscribeRequestBody> },
+  TContext
+> => {
+  return useMutation(getTranscribeAudioMutationOptions(options));
 };

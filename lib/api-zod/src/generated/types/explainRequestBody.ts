@@ -5,17 +5,22 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChatTurn } from "./chatTurn";
 import type { ExplainRequestBodyLanguage } from "./explainRequestBodyLanguage";
 
 export interface ExplainRequestBody {
-  /** The homework question text. Can be empty if an image is provided. */
-  question: string;
+  /** The homework question text (single-turn shortcut). Can be empty if an image is provided. */
+  question?: string;
   /** Optional subject (e.g. Math, Science, History). */
   subject?: string;
   /** Optional grade level (e.g. Grade 5, High School). */
   gradeLevel?: string;
   /** Preferred response language style. */
   language?: ExplainRequestBodyLanguage;
-  /** Optional base64-encoded JPEG/PNG of the homework problem. */
+  /** Optional base64-encoded JPEG/PNG of the homework problem (single-turn shortcut). */
   imageBase64?: string;
+  /** Multi-turn conversation history. When present, takes precedence over `question`/`imageBase64`.
+The last item should be the latest user turn.
+ */
+  messages?: ChatTurn[];
 }

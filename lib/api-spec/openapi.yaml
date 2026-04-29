@@ -32,8 +32,9 @@ paths:
       tags: [ai]
       summary: Stream a friendly homework explanation
       description: |
-        Accepts a question (optionally with a photo and grade/subject context)
-        and returns a Server-Sent Events stream of explanation chunks.
+        Accepts a single question (optionally with a photo and grade/subject context)
+        OR a conversation history of prior turns, and returns a Server-Sent Events
+        stream of explanation chunks.
       requestBody:
         required: true
         content:
@@ -45,6 +46,25 @@ paths:
           description: SSE stream of explanation chunks
           content:
             text/event-stream: {}
+  /ai/transcribe:
+    post:
+      operationId: transcribeAudio
+      tags: [ai]
+      summary: Transcribe a short voice recording into text
+      description: Converts a base64-encoded audio recording into transcribed text using speech-to-text.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscribeRequestBody"
+      responses:
+        "200":
+          description: Transcription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscribeResponse"
 components:
   schemas:
     HealthStatus:
@@ -54,12 +74,28 @@ components:
           type: string
       required:
         - status
+    ChatTurn:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        hasImage:
+          type: boolean
+        imageBase64:
+          type: string
+          description: Base64 image attached to this user turn (only allowed on the latest user turn).
+      required:
+        - role
+        - content
     ExplainRequestBody:
       type: object
       properties:
         question:
           type: string
-          description: The homework question text. Can be empty if an image is provided.
+          description: The homework question text (single-turn shortcut). Can be empty if an image is provided.
         subject:
           type: string
           description: Optional subject (e.g. Math, Science, History).
@@ -72,6 +108,33 @@ components:
           description: Preferred response language style.
         imageBase64:
           type: string
-          description: Optional base64-encoded JPEG/PNG of the homework problem.
+          description: Optional base64-encoded JPEG/PNG of the homework problem (single-turn shortcut).
+        messages:
+          type: array
+          description: |
+            Multi-turn conversation history. When present, takes precedence over `question`/`imageBase64`.
+            The last item should be the latest user turn.
+          items:
+            $ref: "#/components/schemas/ChatTurn"
+    TranscribeRequestBody:
+      type: object
+      properties:
+        audioBase64:
+          type: string
+          description: Base64-encoded audio recording (m4a, webm, wav, mp3, or ogg).
+        format:
+          type: string
+          description: Optional hint about the source format (m4a, webm, wav, mp3, ogg). Auto-detected if absent.
+        language:
+          type: string
+          enum: [english, hinglish, telugu, telugu_roman]
+          description: Preferred language hint for transcription.
       required:
-        - question
+        - audioBase64
+    TranscribeResponse:
+      type: object
+      properties:
+        text:
+          type: string
+      required:
+        - text

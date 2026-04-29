@@ -6,6 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./chatTurn";
+export * from "./chatTurnRole";
 export * from "./explainRequestBody";
 export * from "./explainRequestBodyLanguage";
 export * from "./healthStatus";
+export * from "./transcribeRequestBody";
+export * from "./transcribeRequestBodyLanguage";
+export * from "./transcribeResponse";

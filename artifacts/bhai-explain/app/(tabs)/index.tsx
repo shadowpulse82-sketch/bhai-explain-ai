@@ -22,11 +22,14 @@ import { AskHeader } from "@/components/AskHeader";
 import { Chip } from "@/components/Chip";
 import { LanguagePillRow } from "@/components/LanguagePicker";
 import { PressableScale } from "@/components/PressableScale";
+import { VoiceListeningOverlay } from "@/components/VoiceListeningOverlay";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/contexts/HistoryContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { transcribeAudio } from "@/lib/api";
 import { compressForUpload } from "@/lib/imageCompress";
 import { setPendingRequest } from "@/lib/pendingRequest";
+import { useVoiceRecorder } from "@/lib/voiceRecorder";
 
 const SUBJECTS = [
   "Math",
@@ -74,6 +77,8 @@ export default function AskScreen() {
   const [subject, setSubject] = useState<string>(settings.defaultSubject);
   const [grade, setGrade] = useState<string>(settings.defaultGrade);
   const [pickingImage, setPickingImage] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recorder = useVoiceRecorder();
 
   const recent = useMemo(() => historyItems.slice(0, 3), [historyItems]);
 
@@ -132,6 +137,39 @@ export default function AskScreen() {
     } finally {
       setPickingImage(false);
     }
+  };
+
+  const onMicPress = async () => {
+    if (recorder.state === "recording") return;
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    await recorder.start();
+  };
+
+  const onMicStop = async () => {
+    const result = await recorder.stop();
+    if (!result || !result.base64) return;
+    setTranscribing(true);
+    try {
+      const text = await transcribeAudio({
+        audioBase64: result.base64,
+        format: result.format,
+        language: settings.language,
+      });
+      if (text) {
+        setQuestion((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Couldn't transcribe.";
+      Alert.alert("Bhai", msg);
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const onMicCancel = async () => {
+    await recorder.cancel();
   };
 
   const send = () => {
@@ -207,7 +245,7 @@ export default function AskScreen() {
             <View style={styles.actionsLeft}>
               <Pressable
                 onPress={() => pickImage("camera")}
-                disabled={pickingImage}
+                disabled={pickingImage || transcribing}
                 style={({ pressed }) => [
                   styles.iconBtn,
                   { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 },
@@ -217,13 +255,30 @@ export default function AskScreen() {
               </Pressable>
               <Pressable
                 onPress={() => pickImage("library")}
-                disabled={pickingImage}
+                disabled={pickingImage || transcribing}
                 style={({ pressed }) => [
                   styles.iconBtn,
                   { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <Feather name="image" size={18} color={colors.foreground} />
+              </Pressable>
+              <Pressable
+                onPress={onMicPress}
+                disabled={pickingImage || transcribing}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  {
+                    backgroundColor: colors.muted,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {transcribing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="mic" size={18} color={colors.foreground} />
+                )}
               </Pressable>
             </View>
 
@@ -380,6 +435,16 @@ export default function AskScreen() {
           </View>
         ) : null}
       </KeyboardAwareScrollView>
+
+      <VoiceListeningOverlay
+        visible={
+          recorder.state === "recording" || recorder.state === "preparing"
+        }
+        durationMs={recorder.durationMs}
+        onStop={onMicStop}
+        onCancel={onMicCancel}
+        hint="Speak your homework question. Tap Done when you're finished."
+      />
     </View>
   );
 }

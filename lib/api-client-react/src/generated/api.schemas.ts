@@ -9,6 +9,21 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ChatTurnRole = (typeof ChatTurnRole)[keyof typeof ChatTurnRole];
+
+export const ChatTurnRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export interface ChatTurn {
+  role: ChatTurnRole;
+  content: string;
+  hasImage?: boolean;
+  /** Base64 image attached to this user turn (only allowed on the latest user turn). */
+  imageBase64?: string;
+}
+
 /**
  * Preferred response language style.
  */
@@ -23,14 +38,44 @@ export const ExplainRequestBodyLanguage = {
 } as const;
 
 export interface ExplainRequestBody {
-  /** The homework question text. Can be empty if an image is provided. */
-  question: string;
+  /** The homework question text (single-turn shortcut). Can be empty if an image is provided. */
+  question?: string;
   /** Optional subject (e.g. Math, Science, History). */
   subject?: string;
   /** Optional grade level (e.g. Grade 5, High School). */
   gradeLevel?: string;
   /** Preferred response language style. */
   language?: ExplainRequestBodyLanguage;
-  /** Optional base64-encoded JPEG/PNG of the homework problem. */
+  /** Optional base64-encoded JPEG/PNG of the homework problem (single-turn shortcut). */
   imageBase64?: string;
+  /** Multi-turn conversation history. When present, takes precedence over `question`/`imageBase64`.
+The last item should be the latest user turn.
+ */
+  messages?: ChatTurn[];
+}
+
+/**
+ * Preferred language hint for transcription.
+ */
+export type TranscribeRequestBodyLanguage =
+  (typeof TranscribeRequestBodyLanguage)[keyof typeof TranscribeRequestBodyLanguage];
+
+export const TranscribeRequestBodyLanguage = {
+  english: "english",
+  hinglish: "hinglish",
+  telugu: "telugu",
+  telugu_roman: "telugu_roman",
+} as const;
+
+export interface TranscribeRequestBody {
+  /** Base64-encoded audio recording (m4a, webm, wav, mp3, or ogg). */
+  audioBase64: string;
+  /** Optional hint about the source format (m4a, webm, wav, mp3, ogg). Auto-detected if absent. */
+  format?: string;
+  /** Preferred language hint for transcription. */
+  language?: TranscribeRequestBodyLanguage;
+}
+
+export interface TranscribeResponse {
+  text: string;
 }

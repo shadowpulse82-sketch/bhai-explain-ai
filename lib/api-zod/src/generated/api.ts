@@ -16,16 +16,18 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Accepts a question (optionally with a photo and grade/subject context)
-and returns a Server-Sent Events stream of explanation chunks.
+ * Accepts a single question (optionally with a photo and grade/subject context)
+OR a conversation history of prior turns, and returns a Server-Sent Events
+stream of explanation chunks.
 
  * @summary Stream a friendly homework explanation
  */
 export const ExplainQuestionBody = zod.object({
   question: zod
     .string()
+    .optional()
     .describe(
-      "The homework question text. Can be empty if an image is provided.",
+      "The homework question text (single-turn shortcut). Can be empty if an image is provided.",
     ),
   subject: zod
     .string()
@@ -42,5 +44,49 @@ export const ExplainQuestionBody = zod.object({
   imageBase64: zod
     .string()
     .optional()
-    .describe("Optional base64-encoded JPEG\/PNG of the homework problem."),
+    .describe(
+      "Optional base64-encoded JPEG\/PNG of the homework problem (single-turn shortcut).",
+    ),
+  messages: zod
+    .array(
+      zod.object({
+        role: zod.enum(["user", "assistant"]),
+        content: zod.string(),
+        hasImage: zod.boolean().optional(),
+        imageBase64: zod
+          .string()
+          .optional()
+          .describe(
+            "Base64 image attached to this user turn (only allowed on the latest user turn).",
+          ),
+      }),
+    )
+    .optional()
+    .describe(
+      "Multi-turn conversation history. When present, takes precedence over `question`\/`imageBase64`.\nThe last item should be the latest user turn.\n",
+    ),
+});
+
+/**
+ * Converts a base64-encoded audio recording into transcribed text using speech-to-text.
+ * @summary Transcribe a short voice recording into text
+ */
+export const TranscribeAudioBody = zod.object({
+  audioBase64: zod
+    .string()
+    .describe("Base64-encoded audio recording (m4a, webm, wav, mp3, or ogg)."),
+  format: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional hint about the source format (m4a, webm, wav, mp3, ogg). Auto-detected if absent.",
+    ),
+  language: zod
+    .enum(["english", "hinglish", "telugu", "telugu_roman"])
+    .optional()
+    .describe("Preferred language hint for transcription."),
+});
+
+export const TranscribeAudioResponse = zod.object({
+  text: zod.string(),
 });

@@ -17,11 +17,12 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Bhai Explain uses your camera to read your homework problems and explain them.",
-        "NSPhotoLibraryUsageDescription": "Bhai Explain accesses your photos so you can share homework images for explanation."
+        "NSPhotoLibraryUsageDescription": "Bhai Explain accesses your photos so you can share homework images for explanation.",
+        "NSMicrophoneUsageDescription": "Bhai Explain uses your microphone so you can ask questions by voice."
       }
     },
     "android": {
-      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE"]
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -40,6 +41,12 @@
         {
           "photosPermission": "Bhai Explain accesses your photos so you can share homework images for explanation.",
           "cameraPermission": "Bhai Explain uses your camera to read your homework problems and explain them."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Bhai Explain uses your microphone so you can ask questions by voice."
         }
       ]
     ],

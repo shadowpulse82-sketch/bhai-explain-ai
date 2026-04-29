@@ -1,5 +1,6 @@
 /**
- * Lightweight client for the streaming /api/ai/explain endpoint.
+ * Lightweight client for the streaming /api/ai/explain endpoint
+ * and the /api/ai/transcribe endpoint.
  *
  * Expo bundles run outside the web proxy so we hit the absolute domain
  * exposed via EXPO_PUBLIC_DOMAIN (or fall back to a relative URL on web).
@@ -7,12 +8,22 @@
 
 import "@stardazed/streams-text-encoding";
 
+export type Language = "english" | "hinglish" | "telugu" | "telugu_roman";
+
+export type ChatTurn = {
+  role: "user" | "assistant";
+  content: string;
+  hasImage?: boolean;
+  imageBase64?: string;
+};
+
 export type ExplainParams = {
-  question: string;
+  question?: string;
   subject?: string;
   gradeLevel?: string;
-  language?: "english" | "hinglish" | "telugu" | "telugu_roman";
+  language?: Language;
   imageBase64?: string;
+  messages?: ChatTurn[];
 };
 
 function friendlyHttpError(status: number, body: string): string {
@@ -58,12 +69,22 @@ export async function streamExplain(
   onEvent: (e: ExplainEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const res = await fetch(`${getBaseUrl()}/api/ai/explain`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-    signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getBaseUrl()}/api/ai/explain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+      signal,
+    });
+  } catch (err) {
+    if ((err as { name?: string })?.name === "AbortError") return;
+    onEvent({
+      type: "error",
+      error: "Couldn't reach Bhai. Check your internet and try again.",
+    });
+    return;
+  }
 
   if (!res.ok) {
     let detail = "";
@@ -132,4 +153,36 @@ export async function streamExplain(
     }
     onEvent({ type: "error", error: friendly });
   }
+}
+
+export async function transcribeAudio(params: {
+  audioBase64: string;
+  format?: string;
+  language?: Language;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const res = await fetch(`${getBaseUrl()}/api/ai/transcribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      audioBase64: params.audioBase64,
+      format: params.format,
+      language: params.language,
+    }),
+    signal: params.signal,
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      // ignore
+    }
+    throw new Error(friendlyHttpError(res.status, detail));
+  }
+
+  const data = (await res.json()) as { text?: string; error?: string };
+  if (data.error) throw new Error(data.error);
+  return (data.text ?? "").trim();
 }
