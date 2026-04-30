@@ -41,7 +41,7 @@ export default function AnswerScreen() {
     historyId?: string;
     hasImage?: string;
   }>();
-  const { add, getById, toggleBookmark } = useHistory();
+  const { add, update, getById, toggleBookmark } = useHistory();
   const scrollRef = useRef<ScrollView>(null);
   const startedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -180,12 +180,9 @@ export default function AnswerScreen() {
                 Haptics.NotificationFeedbackType.Success
               ).catch(() => {});
             }
-            // Save (or update) history snapshot — only first turn's Q/A in the list
             const firstUser = params.messages.find((m) => m.role === "user");
             const firstQuestion = firstUser?.content ?? "";
-            const firstAssistant =
-              params.messages.find((m) => m.role === "assistant")?.content ??
-              buffer;
+            const latestAnswer = buffer;
             if (!savedId) {
               const id = newId();
               add({
@@ -194,9 +191,11 @@ export default function AnswerScreen() {
                 subject,
                 gradeLevel,
                 hasImage: !!params.imageBase64 || !!firstUser?.hasImage,
-                answer: firstAssistant || buffer,
+                answer: latestAnswer,
                 createdAt: Date.now(),
               }).then(() => setSavedId(id));
+            } else {
+              update(savedId, { answer: latestAnswer });
             }
           } else if (e.type === "error") {
             setStatus("error");
@@ -210,7 +209,7 @@ export default function AnswerScreen() {
         controller.abort();
       };
     },
-    [add, gradeLevel, language, savedId, subject]
+    [add, update, gradeLevel, language, savedId, subject]
   );
 
   // Kick off the initial stream once

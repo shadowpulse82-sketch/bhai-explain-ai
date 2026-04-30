@@ -127,12 +127,14 @@ export default function AskScreen() {
       setImageBase64(compressed.base64);
       setImagePreview(compressed.uri);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      const msg = err instanceof Error ? err.message : "";
       Alert.alert(
         "Bhai",
         msg.toLowerCase().includes("permission")
-          ? msg
-          : "That photo couldn't be processed. Try a smaller one or snap a fresh picture."
+          ? "Bhai needs permission to access your photos. Enable it in settings."
+          : msg.toLowerCase().includes("too big") || msg.toLowerCase().includes("too large")
+            ? "That photo is too big. Try a smaller picture or zoom in on just the question."
+            : "That photo couldn't be processed. Try a smaller one or snap a fresh picture."
       );
     } finally {
       setPickingImage(false);

@@ -5,6 +5,14 @@
 
 const RELATED_HEADING = /^#{1,4}\s*(?:🔥\s*)?related\s+questions?\s*$/im;
 
+function cleanListItem(text: string): string {
+  return text
+    .replace(/^\*+|\*+$/g, "")
+    .replace(/^"|"$/g, "")
+    .replace(/^\s*[-*•]\s+/, "")
+    .trim();
+}
+
 export type ParsedAnswer = {
   body: string;
   related: string[];
@@ -23,22 +31,18 @@ export function parseAnswer(source: string): ParsedAnswer {
 
   const related: string[] = [];
   const lines = tail.split("\n");
+  let foundFirstItem = false;
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
-    // Stop at a new heading
     if (line.startsWith("#")) break;
-    // Match "1. text", "1) text", "- text", "* text"
-    const numbered = line.match(/^(?:\d+[.)]|[-*•])\s*(.+)$/);
+    const numbered = line.match(/^(?:\d+[.)]|[-*•])\s+(.+)$/);
     if (numbered && numbered[1]) {
-      const cleaned = numbered[1]
-        .replace(/^\*+|\*+$/g, "")
-        .replace(/^"|"$/g, "")
-        .trim();
+      foundFirstItem = true;
+      const cleaned = cleanListItem(numbered[1]);
       if (cleaned) related.push(cleaned);
-    } else if (related.length === 0) {
-      // First non-numbered, non-empty line — treat as suggestion too
-      const cleaned = line.replace(/^\*+|\*+$/g, "").trim();
+    } else if (!foundFirstItem && related.length === 0) {
+      const cleaned = cleanListItem(line);
       if (cleaned) related.push(cleaned);
     }
     if (related.length >= 4) break;

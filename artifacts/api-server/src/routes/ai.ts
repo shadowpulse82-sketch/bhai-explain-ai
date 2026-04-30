@@ -264,8 +264,7 @@ router.post("/explain", async (req: Request, res: Response) => {
     res.end();
   } catch (err) {
     req.log.error({ err }, "explain stream error");
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: "Bhai's brain hiccuped. Try again — it usually works the second time." })}\n\n`);
     res.end();
   }
 });
@@ -293,8 +292,7 @@ router.post("/transcribe", async (req: Request, res: Response) => {
     res.json({ text: text.trim() });
   } catch (err) {
     req.log.error({ err }, "transcribe error");
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: `Couldn't understand that recording. (${msg})` });
+    res.status(500).json({ error: "Couldn't understand that recording. Try speaking clearly and try again." });
   }
 });
 

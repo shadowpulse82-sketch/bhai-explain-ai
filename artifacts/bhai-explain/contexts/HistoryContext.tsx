@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -37,6 +38,7 @@ const HistoryContext = createContext<Ctx | null>(null);
 export function HistoryProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     (async () => {
@@ -54,12 +56,9 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const persist = useCallback(async (next: HistoryItem[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+  const persist = useCallback((next: HistoryItem[]) => {
+    const write = AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    persistQueueRef.current = persistQueueRef.current.then(() => write, () => write);
   }, []);
 
   const add = useCallback(
@@ -97,7 +96,8 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(async () => {
     setItems([]);
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    const write = AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    persistQueueRef.current = persistQueueRef.current.then(() => write, () => write);
   }, []);
 
   const toggleBookmark = useCallback(

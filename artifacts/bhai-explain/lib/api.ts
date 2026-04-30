@@ -64,27 +64,61 @@ export type ExplainEvent =
   | { type: "done" }
   | { type: "error"; error: string };
 
+const STREAM_TIMEOUT_MS = 90_000;
+
+function sanitizeServerError(raw: string): string {
+  if (!raw) return "Bhai's brain hiccuped. Try again — it usually works the second time.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("api_key") || lower.includes("apikey") || lower.includes("unauthorized") || lower.includes("forbidden")) {
+    return "Bhai's brain hiccuped. Try again — it usually works the second time.";
+  }
+  if (lower.includes("rate") || lower.includes("quota") || lower.includes("429")) {
+    return "Bhai is getting too many questions right now. Take a breath and try again in a sec.";
+  }
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return "That took too long. Try again with a stronger signal.";
+  }
+  if (raw.length > 200) {
+    return "Bhai's brain hiccuped. Try again — it usually works the second time.";
+  }
+  return raw;
+}
+
 export async function streamExplain(
   params: ExplainParams,
   onEvent: (e: ExplainEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
   let res: Response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS);
+
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
+
   try {
     res = await fetch(`${getBaseUrl()}/api/ai/explain`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-      signal,
+      signal: combinedSignal,
     });
   } catch (err) {
-    if ((err as { name?: string })?.name === "AbortError") return;
+    clearTimeout(timeoutId);
+    if ((err as { name?: string })?.name === "AbortError") {
+      if (signal?.aborted) return;
+      onEvent({ type: "error", error: "That took too long. Try again with a stronger signal." });
+      return;
+    }
     onEvent({
       type: "error",
       error: "Couldn't reach Bhai. Check your internet and try again.",
     });
     return;
   }
+
+  clearTimeout(timeoutId);
 
   if (!res.ok) {
     let detail = "";
@@ -123,7 +157,7 @@ export async function streamExplain(
         try {
           const parsed = JSON.parse(payload);
           if (parsed.error) {
-            onEvent({ type: "error", error: String(parsed.error) });
+            onEvent({ type: "error", error: sanitizeServerError(String(parsed.error)) });
             return;
           }
           if (parsed.done) {
@@ -155,22 +189,43 @@ export async function streamExplain(
   }
 }
 
+const TRANSCRIBE_TIMEOUT_MS = 30_000;
+
 export async function transcribeAudio(params: {
   audioBase64: string;
   format?: string;
   language?: Language;
   signal?: AbortSignal;
 }): Promise<string> {
-  const res = await fetch(`${getBaseUrl()}/api/ai/transcribe`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      audioBase64: params.audioBase64,
-      format: params.format,
-      language: params.language,
-    }),
-    signal: params.signal,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TRANSCRIBE_TIMEOUT_MS);
+
+  const combinedSignal = params.signal
+    ? AbortSignal.any([params.signal, controller.signal])
+    : controller.signal;
+
+  let res: Response;
+  try {
+    res = await fetch(`${getBaseUrl()}/api/ai/transcribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audioBase64: params.audioBase64,
+        format: params.format,
+        language: params.language,
+      }),
+      signal: combinedSignal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if ((err as { name?: string })?.name === "AbortError") {
+      if (params.signal?.aborted) throw new Error("Recording cancelled.");
+      throw new Error("Transcription took too long. Try a shorter recording.");
+    }
+    throw new Error("Couldn't reach Bhai. Check your internet and try again.");
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     let detail = "";
@@ -183,6 +238,6 @@ export async function transcribeAudio(params: {
   }
 
   const data = (await res.json()) as { text?: string; error?: string };
-  if (data.error) throw new Error(data.error);
+  if (data.error) throw new Error(sanitizeServerError(data.error));
   return (data.text ?? "").trim();
 }

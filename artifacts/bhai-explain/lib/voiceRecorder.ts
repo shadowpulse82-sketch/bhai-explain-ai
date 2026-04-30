@@ -64,17 +64,16 @@ export function useVoiceRecorder() {
     try {
       const durationMs = recState.durationMillis ?? 0;
       await recorder.stop();
-      // Reset audio mode so other audio in the app can play normally
       await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
       const uri = recorder.uri;
       if (!uri || cancelledRef.current) {
+        if (uri) FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
         setState("idle");
         return null;
       }
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      // Best-effort cleanup of the temp file
       FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
       const format = guessFormatFromUri(uri);
       setState("idle");
@@ -89,13 +88,16 @@ export function useVoiceRecorder() {
 
   const cancel = useCallback(async () => {
     cancelledRef.current = true;
+    let uri: string | null = null;
     try {
+      uri = recorder.uri;
       if (recState.isRecording) {
         await recorder.stop();
       }
     } catch {
       // ignore
     }
+    if (uri) FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
     await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
     setState("idle");
   }, [recorder, recState.isRecording]);
@@ -119,5 +121,6 @@ function guessFormatFromUri(uri: string): string {
   if (lower.endsWith(".mp3")) return "mp3";
   if (lower.endsWith(".caf")) return "caf";
   if (lower.endsWith(".aac")) return "aac";
-  return Platform.OS === "ios" ? "m4a" : "m4a";
+  if (lower.endsWith(".ogg")) return "ogg";
+  return Platform.OS === "ios" ? "m4a" : "webm";
 }

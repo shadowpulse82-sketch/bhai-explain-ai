@@ -43,7 +43,7 @@ function tokenize(src: string): Token[] {
     const line = raw.trimEnd();
 
     if (codeBuf) {
-      if (line.trim().startsWith("```")) {
+      if (/^\s*```\s*$/.test(line)) {
         tokens.push({ type: "code", text: codeBuf.join("\n") });
         codeBuf = null;
       } else {
@@ -52,7 +52,7 @@ function tokenize(src: string): Token[] {
       continue;
     }
 
-    if (line.trim().startsWith("```")) {
+    if (/^\s*```/.test(line)) {
       flushParagraph();
       codeBuf = [];
       continue;
@@ -116,17 +116,25 @@ function tokenize(src: string): Token[] {
   return tokens;
 }
 
+type InlineStyle = {
+  color?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  lineHeight?: number;
+  flex?: number;
+};
+
 function Inline({
   text,
   style,
 }: {
   text: string;
-  style?: { color?: string; fontFamily?: string; fontSize?: number };
+  style?: InlineStyle;
 }) {
   const colors = useColors();
   const parts = useMemo(() => {
-    const out: Array<{ text: string; bold?: boolean; code?: boolean }> = [];
-    const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+    const out: Array<{ text: string; bold?: boolean; italic?: boolean; code?: boolean }> = [];
+    const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
     let last = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
@@ -134,6 +142,8 @@ function Inline({
       const tok = m[0];
       if (tok.startsWith("**")) {
         out.push({ text: tok.slice(2, -2), bold: true });
+      } else if (tok.startsWith("*") && !tok.startsWith("**")) {
+        out.push({ text: tok.slice(1, -1), italic: true });
       } else {
         out.push({ text: tok.slice(1, -1), code: true });
       }
@@ -167,6 +177,16 @@ function Inline({
             <Text
               key={i}
               style={{ fontFamily: "Inter_700Bold", color: style?.color }}
+            >
+              {p.text}
+            </Text>
+          );
+        }
+        if (p.italic) {
+          return (
+            <Text
+              key={i}
+              style={{ fontFamily: "Inter_400Regular", fontStyle: "italic", color: style?.color }}
             >
               {p.text}
             </Text>

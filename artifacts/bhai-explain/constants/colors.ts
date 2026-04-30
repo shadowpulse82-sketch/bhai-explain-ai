@@ -68,8 +68,8 @@ const colors = {
     border: "#3f3f46",
     input: "#3f3f46",
 
-    bubbleUser: "#0d9488",
-    bubbleUserForeground: "#ffffff",
+    bubbleUser: "#2dd4bf",
+    bubbleUserForeground: "#0c1f1d",
     bubbleAssistant: "#292524",
     bubbleAssistantForeground: "#fafaf9",
   },

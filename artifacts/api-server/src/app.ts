@@ -47,8 +47,20 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     });
     return;
   }
-  res.status(e?.status ?? 500).json({
-    error: e?.message ?? "Something went wrong on the server.",
+  if (e?.status === 429) {
+    res.status(429).json({
+      error: "Bhai is getting too many questions right now. Take a breath and try again in a sec.",
+    });
+    return;
+  }
+  if (e?.status && e.status >= 400 && e.status < 500) {
+    res.status(e.status).json({
+      error: "Something wasn't right with that request. Try again.",
+    });
+    return;
+  }
+  res.status(500).json({
+    error: "Bhai's brain hiccuped. Try again — it usually works the second time.",
   });
 });
 

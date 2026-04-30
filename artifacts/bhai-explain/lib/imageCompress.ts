@@ -42,6 +42,7 @@ export async function compressForUpload(uri: string): Promise<CompressedImage> {
           approxBytes,
         };
       }
+      lastError = new Error(`Image still too large after resize to ${step.width}px (${Math.round(approxBytes / 1024)}KB)`);
     } catch (err) {
       lastError = err;
     }
@@ -54,19 +55,20 @@ export async function compressForUpload(uri: string): Promise<CompressedImage> {
       { compress: 0.35, format: ImageManipulator.SaveFormat.JPEG, base64: true }
     );
     if (fallback.base64) {
-      return {
-        uri: fallback.uri,
-        base64: fallback.base64,
-        width: fallback.width,
-        height: fallback.height,
-        approxBytes: Math.floor((fallback.base64.length * 3) / 4),
-      };
+      const approxBytes = Math.floor((fallback.base64.length * 3) / 4);
+      if (approxBytes <= MAX_BASE64_BYTES) {
+        return {
+          uri: fallback.uri,
+          base64: fallback.base64,
+          width: fallback.width,
+          height: fallback.height,
+          approxBytes,
+        };
+      }
     }
   } catch (err) {
     lastError = err;
   }
 
-  const message =
-    lastError instanceof Error ? lastError.message : "Image compression failed";
-  throw new Error(message);
+  throw new Error("That photo is too big to send. Try a smaller picture or zoom in on just the question.");
 }
